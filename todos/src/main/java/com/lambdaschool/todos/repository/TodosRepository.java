@@ -18,10 +18,3 @@ public interface TodosRepository extends CrudRepository<Todo, Long>
     @Query(value = "SELECT u.username as username, COUNT(*) as createtodos FROM t JOIN users u ON t.userid= u.userid GROUP BY u.username ", nativeQuery = true)
     ArrayList<JustTheCount> getCreateTodos();
 }
-
-//import com.lambdaschool.todos.models.Todo;
-//        import org.springframework.data.repository.CrudRepository;
-//
-//public interface TodoRepository extends CrudRepository<Todo, Long>
-//{
-//}

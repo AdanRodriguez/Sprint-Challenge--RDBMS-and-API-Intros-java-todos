@@ -1,6 +1,5 @@
 package com.lambdaschool.todos.service;
 
-
 import com.lambdaschool.todos.model.*;
 import com.lambdaschool.todos.repository.RoleRepository;
 import com.lambdaschool.todos.repository.TodosRepository;
@@ -13,36 +12,30 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import javax.persistence.EntityNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
-
-
+@Transactional
 @Service(value = "userService")
 public class UserServiceImpl implements UserDetailsService,
         UserService
 {
-
     @Autowired
     private UserRepository userrepos;
-
     @Autowired
     private RoleRepository rolerepos;
-
     @Autowired
     private TodosRepository todorepos;
-
-    public Todo addTodo(Todo todo)
+    @Override
+    public Todo addTodo(Todo todo, long userid)
     {
         Todo newTodo = new Todo();
-
+        User currentUser = findUserById(userid);
         newTodo.setDescription(todo.getDescription());
         newTodo.setDatestarted(todo.getDatestarted());
-
+        newTodo.setUser(currentUser);
         return todorepos.save(newTodo);
     }
-
     @Transactional
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException
@@ -56,19 +49,16 @@ public class UserServiceImpl implements UserDetailsService,
                 user.getPassword(),
                 user.getAuthority());
     }
-
     public User findUserById(long id) throws EntityNotFoundException
     {
         return userrepos.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User id " + id + " not found!"));
     }
-
-
+    @Override
     public List<User> findByNameContaining(String username)
     {
         return userrepos.findByUsernameContainingIgnoreCase(username.toUpperCase());
     }
-
     @Override
     public List<User> findAll()
     {
@@ -78,12 +68,6 @@ public class UserServiceImpl implements UserDetailsService,
                 .forEachRemaining(list::add);
         return list;
     }
-
-    @Override
-    public User findUserByName(String name) {
-        return null;
-    }
-
     @Transactional
     @Override
     public void delete(long id)
@@ -92,8 +76,7 @@ public class UserServiceImpl implements UserDetailsService,
                 .orElseThrow(() -> new EntityNotFoundException("User id " + id + " not found!"));
         userrepos.deleteById(id);
     }
-
-
+    @Override
     public User findByName(String name)
     {
         User uu = userrepos.findByUsername(name.toLowerCase());
@@ -103,7 +86,6 @@ public class UserServiceImpl implements UserDetailsService,
         }
         return uu;
     }
-
     @Transactional
     @Override
     public User save(User user)
@@ -112,12 +94,10 @@ public class UserServiceImpl implements UserDetailsService,
         {
             throw new EntityNotFoundException(user.getUsername() + " is already taken!");
         }
-
         User newUser = new User();
         newUser.setUsername(user.getUsername());
         newUser.setPasswordNoEncrypt(user.getPassword());
         newUser.setPrimaryemail(user.getPrimaryemail());
-
         ArrayList<UserRoles> newRoles = new ArrayList<>();
         for (UserRoles ur : user.getUserroles())
         {
@@ -129,7 +109,6 @@ public class UserServiceImpl implements UserDetailsService,
                     ur.getRole()));
         }
         newUser.setUserroles(newRoles);
-
         for (Useremail ue : user.getUseremails())
         {
             newUser.getUseremails()
@@ -137,50 +116,44 @@ public class UserServiceImpl implements UserDetailsService,
                             ue.getUseremail()));
         }
 
+        for (Todo t : user.getTodos())
+        {
+            newUser.getTodos()
+                    .add(new Todo(t.getDescription(), t.getDatestarted(), newUser));
+        }
+
         return userrepos.save(newUser);
     }
 
-    @Override
-    public User update(User user, long id) {
-        return null;
-    }
-
     @Transactional
-
+    @Override
     public User update(User user,
                        long id,
                        boolean isAdmin)
     {
         Authentication authentication = SecurityContextHolder.getContext()
                 .getAuthentication();
-
         User authenticatedUser = userrepos.findByUsername(authentication.getName());
-
         if (id == authenticatedUser.getUserid() || isAdmin)
         {
             User currentUser = findUserById(id);
-
             if (user.getUsername() != null)
             {
                 currentUser.setUsername(user.getUsername());
             }
-
             if (user.getPassword() != null)
             {
                 currentUser.setPasswordNoEncrypt(user.getPassword());
             }
-
             if (user.getPrimaryemail() != null)
             {
                 currentUser.setPrimaryemail(user.getPrimaryemail());
             }
-
             if (user.getUserroles()
                     .size() > 0)
             {
                 throw new EntityNotFoundException("User Roles are not updated through User. See endpoint POST: users/user/{userid}/role/{roleid}");
             }
-
             if (user.getUseremails()
                     .size() > 0)
             {
@@ -191,16 +164,14 @@ public class UserServiceImpl implements UserDetailsService,
                                     ue.getUseremail()));
                 }
             }
-
             return userrepos.save(currentUser);
         } else
         {
             throw new EntityNotFoundException(id + " Not current user");
         }
     }
-
     @Transactional
-
+    @Override
     public void deleteUserRole(long userid,
                                long roleid)
     {
@@ -208,7 +179,6 @@ public class UserServiceImpl implements UserDetailsService,
                 .orElseThrow(() -> new EntityNotFoundException("User id " + userid + " not found!"));
         rolerepos.findById(roleid)
                 .orElseThrow(() -> new EntityNotFoundException("Role id " + roleid + " not found!"));
-
         if (rolerepos.checkUserRolesCombo(userid,
                 roleid)
                 .getCountTodos() > 0)
@@ -220,9 +190,8 @@ public class UserServiceImpl implements UserDetailsService,
             throw new EntityNotFoundException("Role and User Combination Does Not Exists");
         }
     }
-
     @Transactional
-
+    @Override
     public void addUserRole(long userid,
                             long roleid)
     {
@@ -230,7 +199,6 @@ public class UserServiceImpl implements UserDetailsService,
                 .orElseThrow(() -> new EntityNotFoundException("User id " + userid + " not found!"));
         rolerepos.findById(roleid)
                 .orElseThrow(() -> new EntityNotFoundException("Role id " + roleid + " not found!"));
-
         if (rolerepos.checkUserRolesCombo(userid,
                 roleid)
                 .getCountTodos() <= 0)

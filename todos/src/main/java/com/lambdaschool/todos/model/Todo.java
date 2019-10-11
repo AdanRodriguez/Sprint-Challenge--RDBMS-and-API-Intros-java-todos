@@ -26,7 +26,7 @@ public class Todo extends Auditable
     @ManyToOne
     @JoinColumn(name = "userid",
                 nullable = false)
-    @JsonIgnoreProperties("todos")
+//    @JsonIgnoreProperties("todos")
     private User user;
 
     public Todo()
@@ -37,8 +37,8 @@ public class Todo extends Auditable
     {
         this.description = description;
         this.datestarted = datestarted;
-        completed = false;
         this.user = user;
+        completed = false;
     }
 
     public long getTodoid()
@@ -90,4 +90,5 @@ public class Todo extends Auditable
     {
         this.user = user;
     }
+
 }
